@@ -8,6 +8,9 @@
 # 2018/06/28
 ##########################
 
+NPD_CONDITIONS="KernelDeadlock ReadonlyFilesystem CorruptDockerOverlay2"
+DEFAULT_CONDITIONS="OutOfDisk MemoryPressure DiskPressure $NPD_CONDITIONS"
+
 usage() {
     echo "Usage $0 [-m <MODE>|-h] [-o <TIMEOUT>] [-H <APISERVER> [-T <TOKEN>|-t <TOKENFILE>]] [-K <KUBE_CONFIG>]"
     echo "         [-N <NAMESPACE>] [-n <NAME>] [-w <WARN>] [-c <CRIT>]"
@@ -23,6 +26,7 @@ usage() {
     echo "  -o TIMEOUT       Timeout in seconds; default is 15"
     echo "  -w WARN          Warning threshold for TLS expiration days and for pod restart count (in pods mode); default is 30"
     echo "  -c CRIT          Critical threshold for pod restart count (in pods mode); default is 150"
+    echo "  -C CONDITIONS    Space-separated list of critical node conditions; default is \"$DEFAULT_CONDITIONS\""
     echo "  -b               Brief mode (more suitable for Zabbix)"
     echo "  -h               Show this help and exit"
     echo
@@ -41,7 +45,7 @@ usage() {
 }
 
 BRIEF=0
-while getopts ":m:H:T:t:K:N:n:o:c:w:bh" arg; do
+while getopts ":m:H:T:t:K:N:n:o:c:C:w:bh" arg; do
     case $arg in
         h) usage ;;
         m) MODE="$OPTARG" ;;
@@ -53,8 +57,9 @@ while getopts ":m:H:T:t:K:N:n:o:c:w:bh" arg; do
         N) NAMESPACE="$OPTARG" ;;
         n) NAME="$OPTARG" ;;
         w) WARN="$OPTARG" ;;
-	  c) CRIT="$OPTARG" ;;
-	  b) BRIEF=1 ;;
+        c) CRIT="$OPTARG" ;;
+        C) CONDITIONS="$OPTARG" ;;
+        b) BRIEF=1 ;;
         *) usage ;;
     esac
 done
@@ -67,6 +72,8 @@ else
 fi
 type jq >/dev/null 2>&1 || { echo "CRITICAL: jq is required"; exit 2; }
 TIMEOUT=${TIMEOUT:-15}
+
+CONDITIONS=${CONDITIONS:-$DEFAULT_CONDITIONS}
 
 getJSON() {
     kubectl_command=$1
@@ -119,7 +126,6 @@ if [ $MODE = nodes ]; then
         echo $data
         exit 2
     fi
-    #echo "$data"
     nodes=($(echo "$data" | jq -r '.items[].metadata.name'))
     for node in ${nodes[@]}; do
         nodeoutput=""
@@ -128,7 +134,7 @@ if [ $MODE = nodes ]; then
             EXITCODE=2
                 OUTPUT="${OUTPUT}Node $node not ready. "
         fi
-        for condition in OutOfDisk MemoryPressure DiskPressure; do
+        for condition in $CONDITIONS; do
             state=$(echo "$data" | jq -r '.items[] | select(.metadata.name=="'$node'") | .status.conditions[] | select(.type=="'$condition'") | .status')
             if [ "$state" = True ]; then
                 [ $EXITCODE -lt 1 ] && EXITCODE=1

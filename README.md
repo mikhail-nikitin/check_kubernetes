@@ -22,8 +22,9 @@ Nagios-style checks against Kubernetes API. Designed for usage with Nagios, Icin
       -n NAME          Optional deployment name or pod app label depending on the mode being used. By default all objects will be checked
       -o TIMEOUT       Timeout in seconds; default is 15
       -w WARN          Warning threshold for TLS expiration days and for pod restart count (in pods mode); default is 30 for both days and restart count
-	-c CRIT          Critical threshold for pod restart count (in pods mode); default is 150
-	-b               Brief mode (more suitable for Zabbix)
+      -c CRIT          Critical threshold for pod restart count (in pods mode); default is 150
+      -C CONDITIONS    Space-separated list of critical node conditions; default is "OutOfDisk MemoryPressure DiskPressure KernelDeadlock ReadonlyFilesystem CorruptDockerOverlay2"
+      -b               Brief mode (more suitable for Zabbix)
       -h               Show this help and exit
     
     Modes are:
